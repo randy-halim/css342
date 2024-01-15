@@ -1,30 +1,39 @@
+#include <iostream>
+
 class TimeSpan
 {
 private:
-  // private fields
-  int seconds{}; // -60 <= x <= 60
-  int minutes{}; // -60 <= x <= 60
-  int hours{};
+  int hours;
+  int minutes;
+  int seconds;
+
+  int convertToSeconds(int hours, int minutes, int seconds) const;
 
 public:
-  // int constructors
-  TimeSpan(int hours, int minutes, int seconds);
-  TimeSpan(int seconds);
-  TimeSpan(int minutes, int seconds);
-  // float constructors
-  TimeSpan(float hours, float minutes, float seconds);
-  TimeSpan(float seconds);
-  TimeSpan(float minutes, float hours);
-  // double constructors
+  TimeSpan();
   TimeSpan(double hours, double minutes, double seconds);
-  TimeSpan(double seconds);
-  TimeSpan(double minutes, double hours);
+  TimeSpan(double hours, double minutes);
+  TimeSpan(double hours);
 
-  // assignment spec. required getters
+  bool setTime(int hours, int minutes, int seconds);
+  bool setTime(double hours, double minutes, double seconds);
+
   int getHours() const;
   int getMinutes() const;
   int getSeconds() const;
 
-  // assignment spec. required setter
-  bool setTime(int hours, int minutes, int seconds);
+  bool operator==(const TimeSpan &timeSpan) const;
+  bool operator!=(const TimeSpan &timeSpan) const;
+
+  TimeSpan operator+(const TimeSpan &timeSpan) const;
+  TimeSpan operator-(const TimeSpan &timeSpan) const;
+  TimeSpan &operator+=(const TimeSpan &timeSpan);
+  TimeSpan &operator-=(const TimeSpan &timeSpan);
+
+  TimeSpan operator-() const;
+
+  friend std::ostream &operator<<(std::ostream &ostream, const TimeSpan &timeSpan);
+  friend std::istream &operator>>(std::istream &istream, TimeSpan &timeSpan);
 };
+
+const int TIME_UNIT = 60;

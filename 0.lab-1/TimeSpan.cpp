@@ -2,67 +2,154 @@
 #include <iostream>
 #include <cmath>
 
-// given either hours or minutes, derive the time unit underneath.
-// effectively: hours -> the minutes component,
-//         and: minutes -> the seconds component
-int deriveSmallerTimeComponent(float input)
+// helper methods
+int TimeSpan::convertToSeconds(int hours, int minutes, int seconds) const
 {
-  // reference: https://stackoverflow.com/a/43045004
-  // f(x) = (x - input_start) / (input_end - input_start)
-  //         * (output_end - output_start) + output_start
-
-  // input_start and input_end will be hardcoded to 0.0f and 1.0f
-  float input_start = 0.0f;
-  float input_end = 1.0f;
-
-  // output_start and output_end will be hardcoded to 0.0f and 60.0f
-  float output_start = 0.0f;
-  float output_end = 60.0f;
-
-  float input_range = input_end - input_start;
-  float output_range = output_end - output_start;
-
-  float result = (input - input_start) / input_range * output_range + output_start;
-  return (int)round(result);
-}
-int deriveSmallerTimeComponent(double input)
-{
-  return deriveSmallerTimeComponent((float)input);
+  return hours * TIME_UNIT * TIME_UNIT + minutes * TIME_UNIT + seconds;
 }
 
+// setters
 bool TimeSpan::setTime(int hours, int minutes, int seconds)
 {
-  if (hours < 0)
+  return this->setTime((double)hours, (double)minutes, (double)seconds);
+}
+bool TimeSpan::setTime(double hours, double minutes, double seconds)
+{
+  double intPart, fractPart;
+
+  seconds = round(seconds);
+
+  fractPart = modf(hours, &intPart);
+  minutes += fractPart * TIME_UNIT;
+
+  fractPart = modf(minutes, &intPart);
+  seconds += fractPart * TIME_UNIT;
+
+  if (seconds >= TIME_UNIT)
   {
-    return false;
-  }
-  if (minutes > 60 || minutes < -60)
-  {
-    return false;
-  }
-  if (seconds > 60 || minutes < -60)
-  {
-    return false;
+    minutes += seconds / TIME_UNIT;
+    seconds = fmod(seconds, TIME_UNIT);
   }
 
-  TimeSpan::hours = hours;
-  TimeSpan::minutes = minutes;
-  TimeSpan::seconds = seconds;
+  if (minutes >= TIME_UNIT)
+  {
+    hours += minutes / TIME_UNIT;
+    minutes = fmod(minutes, TIME_UNIT);
+  }
 
-  return true;
+  if (minutes < -60 || minutes > 60 || seconds < -60 || minutes > 60)
+  {
+    return false;
+  }
+  else
+  {
+    this->hours = hours;
+    this->minutes = minutes;
+    this->seconds = seconds;
+    return true;
+  }
 }
 
-TimeSpan::TimeSpan(int hours, int minutes, int seconds)
+// getter
+int TimeSpan::getHours() const
 {
-  setTime(hours, minutes, seconds);
+  return this->hours;
 }
-TimeSpan::TimeSpan(float hours, float minutes, float seconds)
+int TimeSpan::getMinutes() const
 {
-  int wholeHours = floor(hours);
-  int wholeMinutes = floor(minutes);
-  int wholeSeconds = round(seconds);
-  int derivedMinutes = deriveSmallerTimeComponent(hours - (float)wholeHours);
-  int derivedSeconds = deriveSmallerTimeComponent(minutes - (float)wholeHours);
+  if (this->minutes < 0)
+  {
+    return this->minutes + 60;
+  }
+  else
+  {
+    return this->minutes;
+  }
+}
+int TimeSpan::getSeconds() const
+{
+  if (this->seconds < 0)
+  {
+    return this->seconds + 60;
+  }
+  else
+  {
+    return this->seconds;
+  }
+}
 
-  setTime(wholeHours, wholeMinutes + derivedMinutes, wholeSeconds + derivedSeconds);
+// constructors
+TimeSpan::TimeSpan(double hours, double minutes, double seconds)
+{
+  this->setTime(hours, minutes, seconds);
+}
+TimeSpan::TimeSpan(double hours, double minutes) : TimeSpan(hours, minutes, 0) {}
+TimeSpan::TimeSpan(double hours) : TimeSpan(hours, 0, 0) {}
+TimeSpan::TimeSpan() : TimeSpan(0, 0, 0) {}
+
+// math operators
+TimeSpan TimeSpan::operator+(const TimeSpan &timeSpan) const
+{
+  const int seconds = this->convertToSeconds(this->hours, this->minutes, this->seconds) + this->convertToSeconds(timeSpan.hours, timeSpan.minutes, timeSpan.seconds);
+  const int hours = seconds / (TIME_UNIT * TIME_UNIT);
+  const int minutes = (seconds / TIME_UNIT) % TIME_UNIT;
+  const int secondsRemainder = seconds % TIME_UNIT;
+
+  return TimeSpan(hours, minutes, secondsRemainder);
+}
+TimeSpan TimeSpan::operator-(const TimeSpan &timeSpan) const
+{
+  const int seconds = this->convertToSeconds(this->hours, this->minutes, this->seconds) - this->convertToSeconds(timeSpan.hours, timeSpan.minutes, timeSpan.seconds);
+  const int hours = seconds / (TIME_UNIT * TIME_UNIT);
+  const int minutes = (seconds / TIME_UNIT) % TIME_UNIT;
+  const int secondsRemainder = seconds % TIME_UNIT;
+
+  return TimeSpan(hours, minutes, secondsRemainder);
+}
+TimeSpan &TimeSpan::operator+=(const TimeSpan &timeSpan)
+{
+  *this = *this + timeSpan;
+  return *this;
+}
+TimeSpan &TimeSpan::operator-=(const TimeSpan &timeSpan)
+{
+  *this = *this - timeSpan;
+  return *this;
+}
+
+// unary negation operator
+TimeSpan TimeSpan::operator-() const
+{
+  return TimeSpan(-this->hours, -this->minutes, -this->seconds);
+}
+
+// stream operators
+std::ostream &operator<<(std::ostream &os, const TimeSpan &timeSpan)
+{
+  os << "Hours: " << timeSpan.getHours() << ", Minutes: " << timeSpan.getMinutes() << ", Seconds: " << timeSpan.getSeconds();
+  return os;
+}
+std::istream &operator>>(std::istream &is, TimeSpan &timeSpan)
+{
+  int hours, minutes, seconds;
+  is >> hours >> minutes >> seconds;
+  timeSpan.setTime(hours, minutes, seconds);
+  return is;
+}
+
+// comparison operators
+bool TimeSpan::operator==(const TimeSpan &timeSpan) const
+{
+  if (this->hours == timeSpan.hours && this->minutes == timeSpan.minutes && this->seconds == timeSpan.seconds)
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+bool TimeSpan::operator!=(const TimeSpan &timeSpan) const
+{
+  return !(*this != timeSpan);
 }
